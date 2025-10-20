@@ -20,7 +20,7 @@ export default function Login() {
   const { login, user } = useAuth();
   const router = useRouter();
 
-  // --- localStorage helpers (fallback) ---
+  //  localStorage helpers 
   const readRemembered = () => {
     try {
       const raw = localStorage.getItem("rememberedCredentials");
@@ -46,14 +46,14 @@ export default function Login() {
       }
     }
 
-    // Try Credential Management API first, then fallback to localStorage
+    //  Credential Management API first, then fallback to localStorage
     (async () => {
       if (typeof window === "undefined") return;
 
-      // Try Credential Management API
+      //  Credential Management API
       try {
         if (navigator.credentials && navigator.credentials.get) {
-          // mediation: 'optional' will not force a prompt; it returns stored credentials silently if allowed
+          // mediation:  will not force a prompt; it returns stored credentials silently if allowed
           const creds = await navigator.credentials.get({
             password: true,
             mediation: "optional",
@@ -152,7 +152,7 @@ export default function Login() {
       // Use AuthContext login function
       const result = await login(formData.email, formData.password);
       if (result.success) {
-        // --- Credential Management API: store credentials if available & remember checked ---
+        // Credential Management API: store credentials if available & remember checked ---
         (async () => {
           try {
             if (remember && navigator.credentials && navigator.credentials.store) {
