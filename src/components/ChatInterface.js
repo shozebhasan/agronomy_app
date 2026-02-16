@@ -3,6 +3,64 @@ import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../contexts/AuthContext";
 import { formatMessage } from "@/utils/formatMessage";
+import MessageActions from "./MessageAction";
+import VoiceRecorder from "@/components/VoiceRecorder";
+
+//voice recording handler function
+const handleVoiceTranscribe = (transcribedText) => {
+  if (transcribedText && transcribedText.trim()) {
+    setInputMessage(transcribedText);
+  }
+};
+
+// Add these functions in ChatInterface component
+const handleMessageFeedback = async (messageId, feedbackType) => {
+  try {
+    const response = await fetch("/api/message/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message_id: messageId,
+        feedback_type: feedbackType,
+      }),
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      console.log("Feedback saved successfully");
+    }
+  } catch (error) {
+    console.error("Failed to save feedback:", error);
+  }
+};
+
+const handleExportPDF = async () => {
+  if (!currentConversation || !user?.email) return;
+
+  try {
+    const response = await fetch(
+      `${
+        process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL
+      }/api/conversation/${encodeURIComponent(user.email)}/${encodeURIComponent(
+        currentConversation
+      )}/export`
+    );
+
+    if (response.ok) {
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `chat_${currentConversation}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    }
+  } catch (error) {
+    console.error("Failed to export PDF:", error);
+  }
+};
 
 export default function ChatInterface() {
   const {
@@ -145,6 +203,44 @@ export default function ChatInterface() {
     ? "max-w-4xl mx-auto"
     : "max-w-3xl mx-auto";
   // Show loading spinner
+
+  //chat function buttons code
+
+  // Add this inside ChatInterface component
+  const handleCopyMessage = (text) => {
+    navigator.clipboard.writeText(text);
+    // Optional: Add a toast notification here
+    alert(t("Message copied to clipboard!"));
+  };
+
+  const handleExportPDF = async () => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL}/api/export-pdf`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages,
+            conversation_id: currentConversation?.id,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `chat-export-${new Date().getTime()}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+    } catch (error) {
+      console.error("PDF Export failed", error);
+    }
+  };
 
   if (conversationLoading) {
     return (
@@ -362,6 +458,11 @@ export default function ChatInterface() {
                 disabled={isLoading}
               />
 
+              <VoiceRecorder
+              onTranscribe={handleVoiceTranscribe}
+              disabled={isLoading}
+            />
+
               {/* Send button */}
               <button
                 type="submit"
@@ -405,32 +506,32 @@ export default function ChatInterface() {
   return (
     <div className="flex-1 flex flex-col bg-white">
       <div className="flex justify-end p-4">
-          <button
-            onClick={toggleLanguage}
-            className="relative inline-flex items-center justify-center p-1 bg-gray-200 rounded-full transition-all duration-300 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 w-16 h-8"
-            title={
-              language === "en" ? t("Switch to Urdu") : t("Switch to English")
-            }
-          >
-            {/* Track background */}
-            <div
-              className={`absolute inset-0 rounded-full transition-all duration-300 ${
-                language === "en" ? "bg-green-500" : "bg-blue-500"
-              }`}
-            ></div>
+        <button
+          onClick={toggleLanguage}
+          className="relative inline-flex items-center justify-center p-1 bg-gray-200 rounded-full transition-all duration-300 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 w-16 h-8"
+          title={
+            language === "en" ? t("Switch to Urdu") : t("Switch to English")
+          }
+        >
+          {/* Track background */}
+          <div
+            className={`absolute inset-0 rounded-full transition-all duration-300 ${
+              language === "en" ? "bg-green-500" : "bg-blue-500"
+            }`}
+          ></div>
 
-            {/* Thumb circle */}
-            <div
-              className={`relative bg-white rounded-full shadow-md transform transition-all duration-300 ${
-                language === "en" ? "translate-x-[-12px]" : "translate-x-4"
-              } w-6 h-6 flex items-center justify-center`}
-            >
-              <span className="text-xs font-bold text-gray-900">
-                {language === "en" ? "EN" : "UR"}
-              </span>
-            </div>
-          </button>
-        </div>
+          {/* Thumb circle */}
+          <div
+            className={`relative bg-white rounded-full shadow-md transform transition-all duration-300 ${
+              language === "en" ? "translate-x-[-12px]" : "translate-x-4"
+            } w-6 h-6 flex items-center justify-center`}
+          >
+            <span className="text-xs font-bold text-gray-900">
+              {language === "en" ? "EN" : "UR"}
+            </span>
+          </div>
+        </button>
+      </div>
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-4xl mx-auto space-y-6">
@@ -442,7 +543,7 @@ export default function ChatInterface() {
               }`}
             >
               <div
-                className={`max-w-3xl rounded-2xl px-6 py-4 ${
+                className={`max-w-3xl rounded-2xl px-6 py-4 group ${
                   message.role === "user"
                     ? "bg-green-600 text-white rounded-br-none"
                     : "bg-green-100 text-green-800 rounded-bl-none border border-green-200"
@@ -501,7 +602,21 @@ export default function ChatInterface() {
                         {new Date(message.timestamp).toLocaleTimeString()}
                       </div>
                     )}
+
+                    {/* Add Message Actions for AI messages */}
+                    {message.role === "assistant" && (
+                      <MessageActions
+                        message={message}
+                        onFeedback={handleMessageFeedback}
+                        onExport={
+                          messages.indexOf(message) === messages.length - 1
+                            ? handleExportPDF
+                            : null
+                        }
+                      />
+                    )}
                   </div>
+
                   {message.role === "user" && (
                     <div className="w-8 h-8 bg-green-700 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                       <span className="text-white text-sm font-medium">
@@ -628,6 +743,11 @@ export default function ChatInterface() {
                   : t("Type your message here.")
               }
               className="flex-1 px-4 py-3 border border-green-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+              disabled={isLoading}
+            />
+
+            <VoiceRecorder
+              onTranscribe={handleVoiceTranscribe}
               disabled={isLoading}
             />
 
