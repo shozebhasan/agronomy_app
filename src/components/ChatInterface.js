@@ -6,12 +6,6 @@ import { formatMessage } from "@/utils/formatMessage";
 import MessageActions from "./MessageAction";
 import VoiceRecorder from "@/components/VoiceRecorder";
 
-//voice recording handler function
-const handleVoiceTranscribe = (transcribedText) => {
-  if (transcribedText && transcribedText.trim()) {
-    setInputMessage(transcribedText);
-  }
-};
 
 // Add these functions in ChatInterface component
 const handleMessageFeedback = async (messageId, feedbackType) => {
@@ -77,6 +71,13 @@ export default function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [attachedImages, setAttachedImages] = useState([]);
   const fileInputRef = useRef(null);
+
+  //voice recording handler function
+const handleVoiceTranscribe = (transcribedText) => {
+  if (transcribedText && transcribedText.trim()) {
+    setInputMessage(transcribedText);
+  }
+};
 
   const messagesEndRef = useRef(null);
 
@@ -459,7 +460,7 @@ export default function ChatInterface() {
               />
 
               <VoiceRecorder
-              onTranscribe={handleVoiceTranscribe}
+              onTranscript={handleVoiceTranscribe}
               disabled={isLoading}
             />
 
@@ -747,7 +748,7 @@ export default function ChatInterface() {
             />
 
             <VoiceRecorder
-              onTranscribe={handleVoiceTranscribe}
+              onTranscript={handleVoiceTranscribe}
               disabled={isLoading}
             />
 

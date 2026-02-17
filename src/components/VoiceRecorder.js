@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export default function VoiceRecorder({ onTranscript, disabled }) {
@@ -10,6 +10,20 @@ export default function VoiceRecorder({ onTranscript, disabled }) {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
+  const streamRef = useRef(null);
+  const startTimeRef = useRef(null); // Track actual start time
+
+  useEffect(() => {
+    // Cleanup on unmount
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   const startRecording = async () => {
     try {
@@ -17,61 +31,93 @@ export default function VoiceRecorder({ onTranscript, disabled }) {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          sampleRate: 44100
+          autoGainControl: true,
+          sampleRate: 16000
         } 
       });
       
-      // Check browser support for different MIME types
-      let mimeType = 'audio/webm';
+      streamRef.current = stream;
+      
+      let options = { mimeType: 'audio/webm' };
+      
       if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-        mimeType = 'audio/webm;codecs=opus';
-      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-        mimeType = 'audio/mp4';
+        options = { mimeType: 'audio/webm;codecs=opus' };
       }
       
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
-      
+      const mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
+      
+      // Record start time
+      startTimeRef.current = Date.now();
       setRecordingTime(0);
 
       // Start timer
       timerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1);
+        setRecordingTime(prev => {
+          if (prev >= 59) {
+            stopRecording();
+            return prev;
+          }
+          return prev + 1;
+        });
       }, 1000);
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
+          console.log('📦 Audio chunk received:', event.data.size, 'bytes');
         }
       };
 
       mediaRecorder.onstop = async () => {
+        console.log('🛑 MediaRecorder stopped');
+        
+        // Calculate actual recording duration
+        const actualDuration = startTimeRef.current 
+          ? Math.floor((Date.now() - startTimeRef.current) / 1000)
+          : recordingTime;
+        
+        console.log('⏱️ Recording duration:', actualDuration, 'seconds');
+        
         // Stop timer
         if (timerRef.current) {
           clearInterval(timerRef.current);
           timerRef.current = null;
         }
         
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        // Stop stream
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+          streamRef.current = null;
+        }
         
-        // Stop all tracks
-        stream.getTracks().forEach(track => track.stop());
+        const audioBlob = new Blob(audioChunksRef.current, { type: options.mimeType });
+        console.log('📦 Final audio blob:', audioBlob.size, 'bytes');
         
-        // Check if recording is too short
-        if (recordingTime < 1) {
+        // Check duration and size
+        if (actualDuration < 1) {
           alert(t('Recording too short. Please speak for at least 1 second.'));
           setRecordingTime(0);
+          setIsProcessing(false);
           return;
         }
         
-        // Send to backend for transcription
+        if (audioBlob.size < 1000) { // Less than 1KB
+          alert(t('Recording failed. Please try again and speak louder.'));
+          setRecordingTime(0);
+          setIsProcessing(false);
+          return;
+        }
+        
+        // Proceed with transcription
         await transcribeAudio(audioBlob);
       };
 
-      mediaRecorder.start();
+      // Start recording with timeslice for continuous data
+      mediaRecorder.start(100); // Get data every 100ms
       setIsRecording(true);
-      console.log('🎤 Recording started with MIME type:', mimeType);
+      console.log('🎤 Recording started');
     } catch (error) {
       console.error('Error accessing microphone:', error);
       if (error.name === 'NotAllowedError') {
@@ -85,16 +131,20 @@ export default function VoiceRecorder({ onTranscript, disabled }) {
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
+    console.log('🛑 Stop recording requested');
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       setIsRecording(false);
       setIsProcessing(true);
+      mediaRecorderRef.current.stop();
+      console.log('⏹️ MediaRecorder.stop() called');
     }
   };
 
   const transcribeAudio = async (audioBlob) => {
     try {
-      console.log('📤 Sending audio for transcription, size:', audioBlob.size, 'bytes');
+      console.log('📤 Sending audio for transcription');
+      console.log('   - Size:', audioBlob.size, 'bytes');
+      console.log('   - Type:', audioBlob.type);
       
       const formData = new FormData();
       formData.append('audio', audioBlob, 'recording.webm');
@@ -104,20 +154,29 @@ export default function VoiceRecorder({ onTranscript, disabled }) {
         body: formData,
       });
 
+      console.log('📥 Response status:', response.status);
+
       const data = await response.json();
       console.log('📥 Transcription response:', data);
 
       if (data.success && data.transcript) {
+        console.log('✅ Transcription successful:', data.transcript);
         onTranscript(data.transcript);
+        
+        if (data.language) {
+          console.log('🌍 Detected language:', data.language);
+        }
       } else {
+        console.error('❌ Transcription failed:', data.error);
         alert(t('Failed to transcribe audio: ') + (data.error || 'Unknown error'));
       }
     } catch (error) {
-      console.error('Transcription error:', error);
+      console.error('❌ Transcription error:', error);
       alert(t('Failed to transcribe audio. Please check your internet connection and try again.'));
     } finally {
       setIsProcessing(false);
       setRecordingTime(0);
+      startTimeRef.current = null;
     }
   };
 
@@ -140,7 +199,14 @@ export default function VoiceRecorder({ onTranscript, disabled }) {
       {/* Recording timer */}
       {isRecording && (
         <span className="text-xs text-red-600 font-mono font-semibold animate-pulse">
-          {formatTime(recordingTime)}
+          🔴 {formatTime(recordingTime)}
+        </span>
+      )}
+      
+      {/* Processing indicator */}
+      {isProcessing && (
+        <span className="text-xs text-blue-600 font-medium">
+          {t('Processing...')}
         </span>
       )}
       
@@ -157,7 +223,7 @@ export default function VoiceRecorder({ onTranscript, disabled }) {
         } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         title={
           isRecording
-            ? t('Stop recording')
+            ? t('Stop recording (click to stop)')
             : isProcessing
             ? t('Processing...')
             : t('Record voice message')

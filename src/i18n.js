@@ -63,6 +63,7 @@ const resources = {
       "No microphone found. Please connect a microphone and try again.": "No microphone found. Please connect a microphone and try again.",
       "Failed to access microphone: ": "Failed to access microphone: ",
       "Failed to transcribe audio. Please check your internet connection and try again.": "Failed to transcribe audio. Please check your internet connection and try again.",
+      "Recording failed. Please try again and speak louder.": "Recording failed. Please try again and speak louder.",
     },
   },
   ur: {
@@ -125,6 +126,7 @@ const resources = {
       "No microphone found. Please connect a microphone and try again.": "کوئی مائیکروفون نہیں ملا۔ مائیکروفون منسلک کریں اور دوبارہ کوشش کریں۔",
       "Failed to access microphone: ": "مائیکروفون تک رسائی ناکام: ",
       "Failed to transcribe audio. Please check your internet connection and try again.": "آڈیو ٹرانسکرائب کرنے میں ناکام۔ اپنا انٹرنیٹ کنکشن چیک کریں اور دوبارہ کوشش کریں۔",
+      "Recording failed. Please try again and speak louder.": "ریکارڈنگ ناکام۔ دوبارہ کوشش کریں اور زور سے بولیں۔",
     },
   },
 };
