@@ -4,7 +4,8 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import i18n from "@/i18n";
 import ConfirmationModal from "@/components/ConfirmationModal";
-const PYTHON_BACKEND_URL = process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || "http://localhost:8000";
+const PYTHON_BACKEND_URL =
+  process.env.NEXT_PUBLIC_PYTHON_BACKEND_URL || "http://localhost:8000";
 const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
@@ -26,22 +27,23 @@ export function AuthProvider({ children }) {
     onConfirm: null,
     confirmText: "Delete",
     cancelText: "Cancel",
-    type: "danger"
+    type: "danger",
   });
 
   function changeLanguage(lang) {
-  setLanguage(lang);
-  try {
-    i18n.changeLanguage(lang);
-    if (typeof window !== 'undefined') window.localStorage.setItem('i18nextLng', lang);
-  } catch (e) {
-    console.warn("i18n changeLanguage failed:", e);
+    setLanguage(lang);
+    try {
+      i18n.changeLanguage(lang);
+      if (typeof window !== "undefined")
+        window.localStorage.setItem("i18nextLng", lang);
+    } catch (e) {
+      console.warn("i18n changeLanguage failed:", e);
+    }
   }
-}
 
   const router = useRouter();
 
-  // modal functions 
+  // modal functions
   const showConfirmation = (config) => {
     setModalState({
       isOpen: true,
@@ -50,18 +52,18 @@ export function AuthProvider({ children }) {
       onConfirm: config.onConfirm,
       confirmText: config.confirmText || "Confirm",
       cancelText: config.cancelText || "Cancel",
-      type: config.type || "danger"
+      type: config.type || "danger",
     });
   };
 
   const hideConfirmation = () => {
-    setModalState(prev => ({ ...prev, isOpen: false }));
+    setModalState((prev) => ({ ...prev, isOpen: false }));
   };
 
   // Check if user logged in on mount
-  
+
   useEffect(() => {
-    const currentLang = i18n.language || 'en';
+    const currentLang = i18n.language || "en";
     if (language !== currentLang) setLanguage(currentLang);
     async function checkUserLoggedIn() {
       try {
@@ -70,17 +72,16 @@ export function AuthProvider({ children }) {
         if (res.ok && data.success && data.user) {
           setUser(data.user);
 
-
           await loadChatHistory(data.user.email);
         } else {
           setUser(null);
           // If not logged in, redirect to login
-          router.push('/login');
+          router.push("/login");
         }
       } catch (error) {
         console.error("Error checking login:", error);
         setUser(null);
-        router.push('/login');
+        router.push("/login");
       } finally {
         setLoading(false);
       }
@@ -91,34 +92,32 @@ export function AuthProvider({ children }) {
   // Load chat history
 
   async function loadChatHistory(userEmail) {
-  try {
-    
-    const res = await fetch(
-      `/api/chat?userEmail=${encodeURIComponent(userEmail)}`
-    );
-    const data = await res.json();
-    
+    try {
+      const res = await fetch(
+        `/api/chat?userEmail=${encodeURIComponent(userEmail)}`,
+      );
+      const data = await res.json();
 
-    if (res.ok && data.success) {
-      const convs = data.conversations || [];
-      setConversations(convs);
-      
-      // switch conversation handling load messages
-      setMessages([]);
-      setCurrentConversation(null);
-    } else {
-      console.error("Failed to load chat history:", data.error);
-      setConversations([]);
-      setMessages([]);
-      setCurrentConversation(null);
+      if (res.ok && data.success) {
+        const convs = data.conversations || [];
+        setConversations(convs);
+
+        // switch conversation handling load messages
+        setMessages([]);
+        setCurrentConversation(null);
+      } else {
+        console.error("Failed to load chat history:", data.error);
+        setConversations([]);
+        setMessages([]);
+        setCurrentConversation(null);
+      }
+    } catch (error) {
+      console.error("Error loading history:", error);
     }
-  } catch (error) {
-    console.error("Error loading history:", error);
   }
-}
 
-  // Send message 
-  
+  // Send message
+
   async function sendMessage(message, images = []) {
     if (!user?.email) return { success: false, error: "Not authenticated" };
 
@@ -131,21 +130,26 @@ export function AuthProvider({ children }) {
         timestamp: new Date().toISOString(),
         hasImages: images.length > 0,
         imageCount: images.length,
-        images: images
+        images: images,
       };
       setMessages((prev) => [...prev, tempUserMsg]);
 
-      const isTemp = currentConversation && String(currentConversation).startsWith("tmp-");
-      
+      const isTemp =
+        currentConversation && String(currentConversation).startsWith("tmp-");
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
           email: user.email,
-          conversation_id: isTemp ? null : (currentConversation ? String(currentConversation) : null),
+          conversation_id: isTemp
+            ? null
+            : currentConversation
+              ? String(currentConversation)
+              : null,
           language: language || "en",
-          images: images
+          images: images,
         }),
       });
 
@@ -162,7 +166,7 @@ export function AuthProvider({ children }) {
         // Replace temp message with real messages
         setMessages((prev) => {
           const withoutTmp = prev.filter(
-            (m) => !String(m.id).startsWith("tmp-")
+            (m) => !String(m.id).startsWith("tmp-"),
           );
           return [
             ...withoutTmp,
@@ -173,7 +177,7 @@ export function AuthProvider({ children }) {
               timestamp: new Date().toISOString(),
               hasImages: images.length > 0,
               imageCount: images.length,
-              images: images
+              images: images,
             },
             assistantMsg,
           ];
@@ -183,33 +187,48 @@ export function AuthProvider({ children }) {
         if (data.conversation_id) {
           const convId = String(data.conversation_id);
           setCurrentConversation(convId);
-          
+
           setConversations((prev) => {
             // Replace temp conversation with real one from backend
-            const tempExists = prev.find(c => String(c.id).startsWith("tmp-"));
+            const tempExists = prev.find((c) =>
+              String(c.id).startsWith("tmp-"),
+            );
             if (tempExists) {
-              return prev.map(c =>
+              return prev.map((c) =>
                 String(c.id).startsWith("tmp-")
-                  ? { ...c, id: convId, title: message.substring(0, 50) + (message.length > 50 ? "..." : "") }
-                  : c
+                  ? {
+                      ...c,
+                      id: convId,
+                      title:
+                        message.substring(0, 50) +
+                        (message.length > 50 ? "..." : ""),
+                    }
+                  : c,
               );
             }
 
-            const exists = prev.find(c => String(c.id) === convId);
+            const exists = prev.find((c) => String(c.id) === convId);
             if (!exists) {
               return [
                 {
                   id: convId,
-                  title: message.substring(0, 50) + (message.length > 50 ? "..." : ""),
+                  title:
+                    message.substring(0, 50) +
+                    (message.length > 50 ? "..." : ""),
                   created_at: new Date().toISOString(),
                 },
                 ...prev,
               ];
             } else if (exists.title === "New Chat") {
-              return prev.map(c =>
+              return prev.map((c) =>
                 String(c.id) === convId
-                  ? { ...c, title: message.substring(0, 50) + (message.length > 50 ? "..." : "") }
-                  : c
+                  ? {
+                      ...c,
+                      title:
+                        message.substring(0, 50) +
+                        (message.length > 50 ? "..." : ""),
+                    }
+                  : c,
               );
             }
             return prev;
@@ -219,222 +238,214 @@ export function AuthProvider({ children }) {
         return { success: true, response: data.response };
       } else {
         // Remove the temporary message on error
-        setMessages((prev) => prev.filter(m => !String(m.id).startsWith("tmp-")));
+        setMessages((prev) =>
+          prev.filter((m) => !String(m.id).startsWith("tmp-")),
+        );
         console.error("Failed to send message:", data.error);
         return { success: false, error: data.error || "Backend error" };
       }
     } catch (error) {
       // Remove the temporary message on error
-      setMessages((prev) => prev.filter(m => !String(m.id).startsWith("tmp-")));
+      setMessages((prev) =>
+        prev.filter((m) => !String(m.id).startsWith("tmp-")),
+      );
       console.error("Error sending message:", error);
       return { success: false, error: error.message };
     }
   }
 
-  // Start new chat 
-  
+  // Start new chat
+
   async function startNewChat() {
-  if (!user?.email) {
-    return { success: false, error: "Not logged in" };
-  }
-
-  const existingEmptyChat = conversations.find(c => 
-    c.title === "New Chat" && 
-    (String(c.id).startsWith("tmp-") || c.message_count === 0)
-  );
-
-  if (existingEmptyChat) {
-    console.log("Empty chat already exists, switching to it:", existingEmptyChat.id);
-    setCurrentConversation(existingEmptyChat.id);
-    setMessages([]);
-    setConversationLoading(false);
-    return { success: true, conversation_id: existingEmptyChat.id };
-  }
-
-  const tempId = `tmp-${Date.now()}`;
-  setCurrentConversation(tempId);
-  setMessages([]);
-  setConversations(prev => [
-    {
-      id: tempId,
-      title: "New Chat",
-      created_at: new Date().toISOString(),
-      message_count: 0,
-    },
-    ...prev,
-  ]);
-  
-
-  // placeholder conversation
-  /* 
-  const tempId = `tmp-${Date.now()}`;
-  setCurrentConversation(tempId);
-  setMessages([]);
-  setConversations(prev => [
-    {
-      id: tempId,
-      title: "New Chat",
-      created_at: new Date().toISOString(),
-    },
-    ...prev,
-  ]);
-  */
-
-  
-
-  //  Make sure spinner does not show for new chats
-  setConversationLoading(false);
-
-  return { success: true, conversation_id: tempId };
-
-
-  try {
-    const res = await fetch("/api/chat/new", { 
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: user.email })
-    });
-    const data = await res.json();
-
-    if (res.ok && data.success) {
-      const convId = String(data.conversation_id);
-
-      // Replace tempId with real conversation ID
-      setCurrentConversation(convId);
-      setConversations(prev =>
-        prev.map(c => c.id === tempId ? { ...c, id: convId } : c)
-      );
-
-      return { success: true, conversation_id: convId };
-    } else {
-      // Rollback if backend failed
-      setConversations(prev => prev.filter(c => c.id !== tempId));
-      setCurrentConversation(null);
-      return { success: false, error: data.error || "Failed to create chat" };
+    if (!user?.email) {
+      return { success: false, error: "Not logged in" };
     }
-  } catch (error) {
-    // Rollback on error
-    setConversations(prev => prev.filter(c => c.id !== tempId));
-    setCurrentConversation(null);
-    console.error("Error creating new chat:", error);
-    return { success: false, error: error.message };
+
+    const existingEmptyChat = conversations.find(
+      (c) =>
+        c.title === "New Chat" &&
+        (String(c.id).startsWith("tmp-") || c.message_count === 0),
+    );
+
+    if (existingEmptyChat) {
+      console.log(
+        "Empty chat already exists, switching to it:",
+        existingEmptyChat.id,
+      );
+      setCurrentConversation(existingEmptyChat.id);
+      setMessages([]);
+      setConversationLoading(false);
+      return { success: true, conversation_id: existingEmptyChat.id };
+    }
+
+    const tempId = `tmp-${Date.now()}`;
+    setCurrentConversation(tempId);
+    setMessages([]);
+    setConversations((prev) => [
+      {
+        id: tempId,
+        title: "New Chat",
+        created_at: new Date().toISOString(),
+        message_count: 0,
+      },
+      ...prev,
+    ]);
+
+    //  Make sure spinner does not show for new chats
+    setConversationLoading(false);
+
+    return { success: true, conversation_id: tempId };
+
+    try {
+      const res = await fetch("/api/chat/new", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        const convId = String(data.conversation_id);
+
+        // Replace tempId with real conversation ID
+        setCurrentConversation(convId);
+        setConversations((prev) =>
+          prev.map((c) => (c.id === tempId ? { ...c, id: convId } : c)),
+        );
+
+        return { success: true, conversation_id: convId };
+      } else {
+        // Rollback if backend failed
+        setConversations((prev) => prev.filter((c) => c.id !== tempId));
+        setCurrentConversation(null);
+        return { success: false, error: data.error || "Failed to create chat" };
+      }
+    } catch (error) {
+      // Rollback on error
+      setConversations((prev) => prev.filter((c) => c.id !== tempId));
+      setCurrentConversation(null);
+      console.error("Error creating new chat:", error);
+      return { success: false, error: error.message };
+    }
   }
-}
-
-
-  
 
   // delete conversation
 
-async function deleteConversation(conversationId) {
-  if (!user?.email) return { success: false, error: "Not logged in" };
+  async function deleteConversation(conversationId) {
+    if (!user?.email) return { success: false, error: "Not logged in" };
 
-  // If it's a temp conversation (never saved to DB), just remove from UI
-  if (String(conversationId).startsWith("tmp-")) {
-    setConversations(prev => prev.filter(c => String(c.id) !== String(conversationId)));
-    setCurrentConversation(null);
-    setMessages([]);
-    return { success: true };
-  }
-
-  // update UI first
-  setConversations(prev => prev.filter(c => String(c.id) !== String(conversationId)));
-
-  if (String(currentConversation) === String(conversationId)) {
-    setCurrentConversation(null);
-    setMessages([]);
-  }
-
-  try {
-    const url = `${PYTHON_BACKEND_URL}/api/conversation/${encodeURIComponent(
-      user.email
-    )}/${encodeURIComponent(conversationId)}`;
-
-    const res = await fetch(url, {
-      method: "DELETE",
-      headers: { Accept: "application/json" },
-    });
-    const data = await res.json();
-
-    if (!res.ok || !data.success) {
-      console.error("Delete failed:", data.error);
-
-      //  Rollback if backend failed
-      await loadChatHistory(user.email);
-      return { success: false, error: data.error || "Failed to delete" };
+    // If it's a temp conversation (never saved to DB), just remove from UI
+    if (String(conversationId).startsWith("tmp-")) {
+      setConversations((prev) =>
+        prev.filter((c) => String(c.id) !== String(conversationId)),
+      );
+      setCurrentConversation(null);
+      setMessages([]);
+      return { success: true };
     }
 
-    return { success: true };
-  } catch (err) {
-    console.error("deleteConversation error:", err);
+    // update UI first
+    setConversations((prev) =>
+      prev.filter((c) => String(c.id) !== String(conversationId)),
+    );
 
-    // Rollback on network error
-    await loadChatHistory(user.email);
-    return { success: false, error: err.message };
-  }
-}
+    if (String(currentConversation) === String(conversationId)) {
+      setCurrentConversation(null);
+      setMessages([]);
+    }
 
+    try {
+      const url = `${PYTHON_BACKEND_URL}/api/conversation/${encodeURIComponent(
+        user.email,
+      )}/${encodeURIComponent(conversationId)}`;
 
-  // Switch conversation 
-  
-async function switchConversation(conversationId) {
-  if (!user?.email) return false;
+      const res = await fetch(url, {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+      const data = await res.json();
 
-  // Mark as loading
-  setConversationLoading(true);
-  setCurrentConversation(conversationId);
+      if (!res.ok || !data.success) {
+        console.error("Delete failed:", data.error);
 
-  // If cached, show immediately
-  if (messagesByConversation[conversationId]) {
-    setMessages(messagesByConversation[conversationId]);
-    
-    return true;
-  } else {
-    setMessages([]); // clear while loading
-  }
-
-  try {
-    const url = `${PYTHON_BACKEND_URL}/api/conversation/${encodeURIComponent(user.email)}/${encodeURIComponent(conversationId)}`;
-    const res = await fetch(url, { headers: { "Accept": "application/json" } });
-    const data = await res.json();
-
-    if (res.ok && data.success) {
-      const msgs = (data.messages || []).map(m => ({
-        id: m.id,
-        role: m.role,
-        content: m.content,
-        timestamp: m.timestamp,
-      }));
-
-      setMessages(msgs);
-      setMessagesByConversation(prev => ({ ...prev, [conversationId]: msgs }));
-
-      if (data.conversation && data.conversation.title) {
-        setConversations(prev =>
-          prev.map(c =>
-            String(c.id) === String(conversationId)
-              ? { ...c, title: data.conversation.title }
-              : c
-          )
-        );
+        //  Rollback if backend failed
+        await loadChatHistory(user.email);
+        return { success: false, error: data.error || "Failed to delete" };
       }
+
+      return { success: true };
+    } catch (err) {
+      console.error("deleteConversation error:", err);
+
+      // Rollback on network error
+      await loadChatHistory(user.email);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // Switch conversation
+
+  async function switchConversation(conversationId) {
+    if (!user?.email) return false;
+
+    // Mark as loading
+    setConversationLoading(true);
+    setCurrentConversation(conversationId);
+
+    // If cached, show immediately
+    if (messagesByConversation[conversationId]) {
+      setMessages(messagesByConversation[conversationId]);
 
       return true;
     } else {
-      console.error("Failed to switch conversation:", data.error);
-      await loadChatHistory(user.email);
-      return false;
+      setMessages([]); // clear while loading
     }
-  } catch (err) {
-    console.error("Error switching conversation:", err);
-    return false;
-  } finally{
-    setConversationLoading(false);
+
+    try {
+      const url = `${PYTHON_BACKEND_URL}/api/conversation/${encodeURIComponent(user.email)}/${encodeURIComponent(conversationId)}`;
+      const res = await fetch(url, { headers: { Accept: "application/json" } });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        const msgs = (data.messages || []).map((m) => ({
+          id: m.id,
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp,
+        }));
+
+        setMessages(msgs);
+        setMessagesByConversation((prev) => ({
+          ...prev,
+          [conversationId]: msgs,
+        }));
+
+        if (data.conversation && data.conversation.title) {
+          setConversations((prev) =>
+            prev.map((c) =>
+              String(c.id) === String(conversationId)
+                ? { ...c, title: data.conversation.title }
+                : c,
+            ),
+          );
+        }
+
+        return true;
+      } else {
+        console.error("Failed to switch conversation:", data.error);
+        await loadChatHistory(user.email);
+        return false;
+      }
+    } catch (err) {
+      console.error("Error switching conversation:", err);
+      return false;
+    } finally {
+      setConversationLoading(false);
+    }
   }
-}
 
   // Auth helpers
-  
+
   async function login(email, password) {
     try {
       const res = await fetch("/api/auth/login", {
@@ -443,7 +454,7 @@ async function switchConversation(conversationId) {
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
-      
+
       if (res.ok && data.success) {
         setUser(data.user);
         await loadChatHistory(data.user.email);
@@ -479,20 +490,17 @@ async function switchConversation(conversationId) {
   }
 
   // Helper function for updating conversation title
-  
+
   function updateConversationTitle(conversationId, newTitle) {
-    setConversations(prev => 
-      prev.map(c => 
-        String(c.id) === String(conversationId)
-          ? { ...c, title: newTitle }
-          : c
-      )
+    setConversations((prev) =>
+      prev.map((c) =>
+        String(c.id) === String(conversationId) ? { ...c, title: newTitle } : c,
+      ),
     );
   }
- const toggleSidebar = () => {
-    setSidebarOpen(prev => !prev);
+  const toggleSidebar = () => {
+    setSidebarOpen((prev) => !prev);
   };
-
 
   return (
     <AuthContext.Provider
@@ -518,10 +526,10 @@ async function switchConversation(conversationId) {
         currentConversationId: currentConversation,
         conversationLoading,
         language,
-        setLanguage : changeLanguage,
+        setLanguage: changeLanguage,
         showConfirmation,
         hideConfirmation,
-        modalState
+        modalState,
       }}
     >
       {children}
@@ -545,11 +553,10 @@ async function switchConversation(conversationId) {
   );
 }
 
-
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }
