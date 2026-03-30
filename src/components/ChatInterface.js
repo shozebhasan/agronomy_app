@@ -144,6 +144,8 @@ const handleVoiceTranscribe = (transcribedText) => {
     }
   };
 
+
+
   // Convert file to base64
   const fileToBase64 = (file) => {
     return new Promise((resolve, reject) => {
@@ -206,6 +208,7 @@ const handleVoiceTranscribe = (transcribedText) => {
   // Show loading spinner
 
   //chat function buttons code
+  
 
   // Add this inside ChatInterface component
   const handleCopyMessage = (text) => {
@@ -280,7 +283,7 @@ const handleVoiceTranscribe = (transcribedText) => {
                 language === "en" ? "translate-x-[-12px]" : "translate-x-4"
               } w-6 h-6 flex items-center justify-center`}
             >
-              <span className="text-xs font-bold text-gray-900">
+              <span className="text-xs font-bold language-toggle-text">
                 {language === "en" ? "EN" : "UR"}
               </span>
             </div>
@@ -527,7 +530,7 @@ const handleVoiceTranscribe = (transcribedText) => {
               language === "en" ? "translate-x-[-12px]" : "translate-x-4"
             } w-6 h-6 flex items-center justify-center`}
           >
-            <span className="text-xs font-bold text-gray-900">
+            <span className="text-xs font-bold language-toggle-text">
               {language === "en" ? "EN" : "UR"}
             </span>
           </div>

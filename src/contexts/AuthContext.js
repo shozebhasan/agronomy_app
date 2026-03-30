@@ -70,13 +70,6 @@ export function AuthProvider({ children }) {
         if (res.ok && data.success && data.user) {
           setUser(data.user);
 
-          // Trigger background memory refresh
-        fetch(`${PYTHON_BACKEND_URL}/api/memory/refresh`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: data.user.email })
-        }).catch(err => console.log("Memory refresh:", err));
-
 
           await loadChatHistory(data.user.email);
         } else {
@@ -142,15 +135,17 @@ export function AuthProvider({ children }) {
       };
       setMessages((prev) => [...prev, tempUserMsg]);
 
+      const isTemp = currentConversation && String(currentConversation).startsWith("tmp-");
+      
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
           email: user.email,
-          conversation_id: currentConversation ? String(currentConversation) : null, // Send current conversation ID
-          language: language || "en",  //passing language
-          images: images  // Add images array
+          conversation_id: isTemp ? null : (currentConversation ? String(currentConversation) : null),
+          language: language || "en",
+          images: images
         }),
       });
 
@@ -189,14 +184,19 @@ export function AuthProvider({ children }) {
           const convId = String(data.conversation_id);
           setCurrentConversation(convId);
           
-          // Update conversations list
           setConversations((prev) => {
-            const exists = prev.find(
-              (c) => String(c.id) === convId
-            );
-            
+            // Replace temp conversation with real one from backend
+            const tempExists = prev.find(c => String(c.id).startsWith("tmp-"));
+            if (tempExists) {
+              return prev.map(c =>
+                String(c.id).startsWith("tmp-")
+                  ? { ...c, id: convId, title: message.substring(0, 50) + (message.length > 50 ? "..." : "") }
+                  : c
+              );
+            }
+
+            const exists = prev.find(c => String(c.id) === convId);
             if (!exists) {
-              // Add new conversation
               return [
                 {
                   id: convId,
@@ -206,14 +206,12 @@ export function AuthProvider({ children }) {
                 ...prev,
               ];
             } else if (exists.title === "New Chat") {
-              // Update title if it's still "New Chat"
-              return prev.map(c => 
-                String(c.id) === convId 
+              return prev.map(c =>
+                String(c.id) === convId
                   ? { ...c, title: message.substring(0, 50) + (message.length > 50 ? "..." : "") }
                   : c
               );
             }
-            
             return prev;
           });
         }
@@ -240,7 +238,35 @@ export function AuthProvider({ children }) {
     return { success: false, error: "Not logged in" };
   }
 
+  const existingEmptyChat = conversations.find(c => 
+    c.title === "New Chat" && 
+    (String(c.id).startsWith("tmp-") || c.message_count === 0)
+  );
+
+  if (existingEmptyChat) {
+    console.log("Empty chat already exists, switching to it:", existingEmptyChat.id);
+    setCurrentConversation(existingEmptyChat.id);
+    setMessages([]);
+    setConversationLoading(false);
+    return { success: true, conversation_id: existingEmptyChat.id };
+  }
+
+  const tempId = `tmp-${Date.now()}`;
+  setCurrentConversation(tempId);
+  setMessages([]);
+  setConversations(prev => [
+    {
+      id: tempId,
+      title: "New Chat",
+      created_at: new Date().toISOString(),
+      message_count: 0,
+    },
+    ...prev,
+  ]);
+  
+
   // placeholder conversation
+  /* 
   const tempId = `tmp-${Date.now()}`;
   setCurrentConversation(tempId);
   setMessages([]);
@@ -252,9 +278,15 @@ export function AuthProvider({ children }) {
     },
     ...prev,
   ]);
+  */
+
+  
 
   //  Make sure spinner does not show for new chats
   setConversationLoading(false);
+
+  return { success: true, conversation_id: tempId };
+
 
   try {
     const res = await fetch("/api/chat/new", { 
@@ -296,6 +328,14 @@ export function AuthProvider({ children }) {
 
 async function deleteConversation(conversationId) {
   if (!user?.email) return { success: false, error: "Not logged in" };
+
+  // If it's a temp conversation (never saved to DB), just remove from UI
+  if (String(conversationId).startsWith("tmp-")) {
+    setConversations(prev => prev.filter(c => String(c.id) !== String(conversationId)));
+    setCurrentConversation(null);
+    setMessages([]);
+    return { success: true };
+  }
 
   // update UI first
   setConversations(prev => prev.filter(c => String(c.id) !== String(conversationId)));
@@ -504,6 +544,7 @@ async function switchConversation(conversationId) {
     </AuthContext.Provider>
   );
 }
+
 
 export function useAuth() {
   const context = useContext(AuthContext);

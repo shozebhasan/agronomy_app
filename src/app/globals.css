@@ -125,3 +125,53 @@ body {
   cursor: not-allowed;
   transform: none;
 }
+
+/* Add to globals.css */
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #000000;
+  color: #ffffff;
+}
+
+.dark body > div:not([data-portal]) .bg-white { background-color: #111111 !important; }
+.dark .bg-green-50 { background-color: #0a0a0a !important; }
+.dark .bg-green-100 { background-color: #1a1a1a !important; }
+.dark .text-green-800 { color: #ffffff !important; }
+.dark .text-green-700 { color: #e5e5e5 !important; }
+.dark .text-green-600 { color: #cccccc !important; }
+.dark .border-green-200 { border-color: #333333 !important; }
+.dark .border-green-300 { border-color: #444444 !important; }
+.dark .bg-green-600 { background-color: #166534 !important; }
+.dark .hover\:bg-green-100:hover { background-color: #222222 !important; }
+.dark input { background-color: #1a1a1a !important; color: #ffffff !important; border-color: #444 !important; }
+
+.dark .language-toggle-text {
+  color: #ffffff !important;
+}
+
+/* And in light mode, keep it black */
+.language-toggle-text {
+  color: #111827 !important;
+}
+
+
+/* Dark mode button text override */
+.dark-mode-button-text {
+  --text-color: #166534;
+  --hover-color: #ffffff;
+}
+
+.dark .dark-mode-button-text {
+  --text-color: #ffffff;
+}
+
+.dark-mode-button-text {
+  color: var(--text-color);
+}
+
+.dark-mode-button-text:hover {
+  color: var(--hover-color);
+}
