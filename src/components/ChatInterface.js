@@ -663,7 +663,7 @@ const handleVoiceTranscribe = (transcribedText) => {
                         style={{ animationDelay: "0.2s" }}
                       ></div>
                     </div>
-                    <span className="text-green-700">{t("typing")}</span>
+                    <span className="text-green-700">{t("Thinking")}</span>
                   </div>
                 </div>
               </div>
